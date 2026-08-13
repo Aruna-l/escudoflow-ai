@@ -6,7 +6,6 @@ EscudoFlow AI is an AI-powered cybersecurity platform designed to detect, analyz
 
 The platform combines machine learning, rule-based detection, threat intelligence, computer vision, reputation analysis, and risk fusion to provide a unified security analysis experience.
 
-> **Project Status:** Active Development — approximately 70% completed.
 
 ---
 
