@@ -1,9 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Download, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileText, Download, User, Loader2 } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { GlassCard, RiskBadge, SectionHeading } from "@/components/cyber-ui";
 import { Button } from "@/components/ui/button";
-import { REPORT_MOCK } from "@/lib/mock-data";
+import {
+  getLatestReport,
+  updateReportNotes,
+  exportReportUrl,
+  ReportApiError,
+  type ReportResponse,
+} from "@/lib/report-api";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
@@ -17,8 +24,78 @@ export const Route = createFileRoute("/reports")({
   component: Reports,
 });
 
+const severityToLevel = (s: string): "critical" | "high" | "suspicious" | "low" | "safe" => {
+  switch (s) {
+    case "Critical": return "critical";
+    case "High": return "high";
+    case "Suspicious": return "suspicious";
+    case "Low": return "low";
+    default: return "safe";
+  }
+};
+
 function Reports() {
-  const r = REPORT_MOCK;
+  const [r, setR] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getLatestReport();
+        setR(data);
+        setNotes(data.analystNotes ?? "");
+      } catch (err) {
+        setError(
+          err instanceof ReportApiError
+            ? err.message
+            : "No report available yet — run an analysis on the Email, URL, Attachment, or Threat pages first."
+        );
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const saveNotes = async () => {
+    if (!r) return;
+    setSavingNotes(true);
+    try {
+      const updated = await updateReportNotes(r.id, notes);
+      setR(updated);
+    } catch {
+      // keep local notes on failure; user can retry by blurring again
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppShell>
+        <PageHeader eyebrow="Reports" title="Investigation Report" description="Automatically generated, analyst-editable, executive-ready." />
+        <GlassCard>
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading latest report…
+          </div>
+        </GlassCard>
+      </AppShell>
+    );
+  }
+
+  if (error || !r) {
+    return (
+      <AppShell>
+        <PageHeader eyebrow="Reports" title="Investigation Report" description="Automatically generated, analyst-editable, executive-ready." />
+        <GlassCard>
+          <div className="text-sm text-muted-foreground text-center py-12">{error}</div>
+        </GlassCard>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -27,9 +104,15 @@ function Reports() {
         description="Automatically generated, analyst-editable, executive-ready."
         actions={
           <>
-            <Button variant="outline" className="border-white/10"><Download className="h-4 w-4 mr-2" /> CSV</Button>
-            <Button variant="outline" className="border-white/10"><Download className="h-4 w-4 mr-2" /> JSON</Button>
-            <Button className="gradient-primary text-white glow-primary"><Download className="h-4 w-4 mr-2" /> Export PDF</Button>
+            <a href={exportReportUrl(r.id, "csv")}>
+              <Button variant="outline" className="border-white/10"><Download className="h-4 w-4 mr-2" /> CSV</Button>
+            </a>
+            <a href={exportReportUrl(r.id, "json")}>
+              <Button variant="outline" className="border-white/10"><Download className="h-4 w-4 mr-2" /> JSON</Button>
+            </a>
+            <a href={exportReportUrl(r.id, "pdf")}>
+              <Button className="gradient-primary text-white glow-primary"><Download className="h-4 w-4 mr-2" /> Export PDF</Button>
+            </a>
           </>
         }
       />
@@ -42,7 +125,7 @@ function Reports() {
             <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span><FileText className="h-3.5 w-3.5 inline mr-1" /> {r.createdAt}</span>
               <span><User className="h-3.5 w-3.5 inline mr-1" /> {r.analyst}</span>
-              <RiskBadge level="critical" label={r.severity} />
+              <RiskBadge level={severityToLevel(r.severity)} label={r.severity} />
             </div>
           </div>
         </div>
@@ -59,9 +142,9 @@ function Reports() {
             <SectionHeading title="Threat Overview" />
             <div className="grid sm:grid-cols-3 gap-3">
               {[
-                { k: "Vector", v: "Email — BEC" },
-                { k: "Target", v: "CFO / Finance" },
-                { k: "Impact", v: "$248,500 attempted" },
+                { k: "Vector", v: r.threatOverview.vector },
+                { k: "Target", v: r.threatOverview.target },
+                { k: "Impact", v: r.threatOverview.impact },
               ].map((c) => (
                 <div key={c.k} className="rounded-lg glass p-3">
                   <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{c.k}</div>
@@ -106,17 +189,21 @@ function Reports() {
           <GlassCard>
             <SectionHeading title="Analyst Notes" />
             <textarea
-              defaultValue="Coordinated with Finance to freeze wire authorizations for 24h. Recommending mandatory callback verification for all wires > $50k."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={saveNotes}
+              placeholder="Add investigation notes…"
               className="w-full h-24 rounded-lg glass p-3 text-sm outline-none resize-none"
             />
+            {savingNotes && <div className="mt-1 text-[10px] text-muted-foreground">Saving…</div>}
           </GlassCard>
         </div>
 
         <div className="space-y-6">
           <GlassCard>
             <SectionHeading title="Risk Score" />
-            <div className="text-5xl font-bold gradient-text">97</div>
-            <div className="text-xs text-muted-foreground mt-1">Confidence 96%</div>
+            <div className="text-5xl font-bold gradient-text">{r.riskScore}</div>
+            <div className="text-xs text-muted-foreground mt-1">Confidence {r.confidence}%</div>
           </GlassCard>
 
           <GlassCard>
@@ -134,9 +221,9 @@ function Reports() {
           <GlassCard>
             <SectionHeading title="Evidence" />
             <ul className="space-y-2 text-sm">
-              {["raw-message.eml","header-analysis.json","behavior-trace.json","screenshot-clone.png"].map((f) => (
-                <li key={f} className="flex items-center justify-between rounded-lg glass px-3 py-2">
-                  <span className="font-mono text-xs">{f}</span>
+              {r.evidence.map((f) => (
+                <li key={f.filename} className="flex items-center justify-between rounded-lg glass px-3 py-2">
+                  <span className="font-mono text-xs">{f.filename}</span>
                   <Download className="h-3.5 w-3.5 text-cyan cursor-pointer" />
                 </li>
               ))}

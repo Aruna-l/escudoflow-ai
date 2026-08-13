@@ -13,8 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AttachmentIntelligenceRouteImport } from './routes/attachment-intelligence'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmailIntelligenceRouteImport } from './routes/email-intelligence'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ThreatIntelligenceRouteImport } from './routes/threat-intelligence'
@@ -41,6 +43,11 @@ const EmailIntelligenceRoute = EmailIntelligenceRouteImport.update({
   path: '/email-intelligence',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -49,6 +56,11 @@ const LoginRoute = LoginRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -82,8 +94,10 @@ export interface FileRoutesByFullPath {
   '/attachment-intelligence': typeof AttachmentIntelligenceRoute
   '/dashboard': typeof DashboardRoute
   '/email-intelligence': typeof EmailIntelligenceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/threat-intelligence': typeof ThreatIntelligenceRoute
@@ -95,8 +109,10 @@ export interface FileRoutesByTo {
   '/attachment-intelligence': typeof AttachmentIntelligenceRoute
   '/dashboard': typeof DashboardRoute
   '/email-intelligence': typeof EmailIntelligenceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/threat-intelligence': typeof ThreatIntelligenceRoute
@@ -109,8 +125,10 @@ export interface FileRoutesById {
   '/attachment-intelligence': typeof AttachmentIntelligenceRoute
   '/dashboard': typeof DashboardRoute
   '/email-intelligence': typeof EmailIntelligenceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/threat-intelligence': typeof ThreatIntelligenceRoute
@@ -124,8 +142,10 @@ export interface FileRouteTypes {
     | '/attachment-intelligence'
     | '/dashboard'
     | '/email-intelligence'
+    | '/forgot-password'
     | '/login'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signup'
     | '/threat-intelligence'
@@ -137,8 +157,10 @@ export interface FileRouteTypes {
     | '/attachment-intelligence'
     | '/dashboard'
     | '/email-intelligence'
+    | '/forgot-password'
     | '/login'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signup'
     | '/threat-intelligence'
@@ -150,8 +172,10 @@ export interface FileRouteTypes {
     | '/attachment-intelligence'
     | '/dashboard'
     | '/email-intelligence'
+    | '/forgot-password'
     | '/login'
     | '/reports'
+    | '/reset-password'
     | '/settings'
     | '/signup'
     | '/threat-intelligence'
@@ -164,8 +188,10 @@ export interface RootRouteChildren {
   AttachmentIntelligenceRoute: typeof AttachmentIntelligenceRoute
   DashboardRoute: typeof DashboardRoute
   EmailIntelligenceRoute: typeof EmailIntelligenceRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   ThreatIntelligenceRoute: typeof ThreatIntelligenceRoute
@@ -203,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailIntelligenceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -215,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -260,8 +300,10 @@ const rootRouteChildren: RootRouteChildren = {
   AttachmentIntelligenceRoute: AttachmentIntelligenceRoute,
   DashboardRoute: DashboardRoute,
   EmailIntelligenceRoute: EmailIntelligenceRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   ThreatIntelligenceRoute: ThreatIntelligenceRoute,

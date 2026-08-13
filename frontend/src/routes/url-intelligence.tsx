@@ -6,6 +6,8 @@ import { AppShell, PageHeader } from "@/components/app-shell";
 import { GlassCard, RiskBadge, RiskMeter, SectionHeading } from "@/components/cyber-ui";
 import { Button } from "@/components/ui/button";
 import { URL_ANALYSIS_MOCK } from "@/lib/mock-data";
+import api from "../services/api.ts";
+import { usePersistedState } from "@/lib/persisted-state";
 
 export const Route = createFileRoute("/url-intelligence")({
   head: () => ({
@@ -20,16 +22,121 @@ export const Route = createFileRoute("/url-intelligence")({
 });
 
 function URLIntelligence() {
-  const [url, setUrl] = useState(URL_ANALYSIS_MOCK.url);
-  const [analyzed, setAnalyzed] = useState(false);
+  const [url, setUrl, clearUrl] = usePersistedState("escudoflow_url", URL_ANALYSIS_MOCK.url);
+  const [analyzed, setAnalyzed, clearAnalyzed] = usePersistedState("escudoflow_url_analyzed", false);
   const [loading, setLoading] = useState(false);
-  const data = URL_ANALYSIS_MOCK;
+  const [analysis, setAnalysis, clearAnalysis] = usePersistedState<any>("escudoflow_url_analysis_data", null);
+  const data = analysis
+  ? {
+      overallRisk: analysis.risk_score,
 
-  const runAnalysis = () => {
-    setLoading(true);
-    // TODO(api): POST /api/v1/url/analyze { url }
-    setTimeout(() => { setLoading(false); setAnalyzed(true); }, 900);
+      confidence: analysis.confidence,
+
+      verdict:
+        analysis.prediction === "Phishing"
+          ? "Dangerous"
+          : analysis.prediction === "Suspicious"
+          ? "Suspicious"
+          : "Safe",
+
+      brandSimilarity:
+        analysis.brand_similarity?.brandSimilarity ?? 0,
+
+      domainAge:
+        analysis.whois?.domainAge ?? "Unknown",
+
+      whois: {
+        registrar:
+          analysis.whois?.registrar ?? "Unknown",
+
+        country:
+          analysis.whois?.country ?? "Unknown",
+
+        createdAt:
+          analysis.whois?.createdAt ?? "Unknown",
+      },
+
+      hosting:
+        analysis.hosting?.hosting ?? "Unknown",
+
+      ip:
+        analysis.hosting?.ip ?? "Unknown",
+
+      dns: {
+        a_records: analysis.dns?.a_records ?? [],
+        ns_records: analysis.dns?.ns_records ?? [],
+        mx_records: analysis.dns?.mx_records ?? [],
+      },
+
+      ssl:
+        analysis.ssl ?? {
+          issuer: "Unknown",
+          validFrom: "-",
+          validTo: "-",
+          valid: false,
+        },
+
+      reputationFeeds:
+        analysis.reputation?.providers ?? [],
+
+      redirects:
+        analysis.redirects ?? [],
+
+      timeline:
+        analysis.timeline ?? [],
+
+      aiExplanation:
+        analysis.ai_explanation ?? {
+          summary: "",
+          reasons: [],
+          recommendations: [],
+        },
+    }
+  : {
+    ...URL_ANALYSIS_MOCK,
+
+    dns: {
+      a_records: [],
+      ns_records: [],
+      mx_records: [],
+    },
+
+    reputationFeeds: [],
+
+    redirects: [],
+
+    timeline: [],
+
+    aiExplanation: {
+      summary: "",
+      reasons: [],
+      recommendations: [],
+    },
   };
+
+
+  const runAnalysis = async () => {
+  if (!url) return;
+
+  setLoading(true);
+
+  try {
+    const response = await api.post("/url/analyze", {
+      url: url,
+    });
+
+    console.log("Backend Response:", response.data);
+
+    setAnalysis(response.data);
+
+    setAnalyzed(true);
+  } catch (error) {
+    console.error("Analysis Error:", error);
+    alert("Failed to analyze URL");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <AppShell>
@@ -59,7 +166,7 @@ function URLIntelligence() {
             <Button onClick={runAnalysis} disabled={!url || loading} className="gradient-primary text-white glow-primary h-14 px-6">
               {loading ? "Analyzing…" : <><Search className="h-4 w-4 mr-2" />Analyze</>}
             </Button>
-            <Button variant="outline" onClick={() => { setUrl(""); setAnalyzed(false); }} className="border-white/10 h-14 px-6">Clear</Button>
+            <Button variant="outline" onClick={() => { clearUrl(); clearAnalyzed(); clearAnalysis(); }} className="border-white/10 h-14 px-6">Clear</Button>
           </div>
         </div>
       </GlassCard>
@@ -93,7 +200,7 @@ function URLIntelligence() {
             <GlassCard>
               <div className="text-xs uppercase tracking-widest text-muted-foreground">Brand Similarity</div>
               <div className="mt-2 text-4xl font-bold">{data.brandSimilarity}%</div>
-              <div className="mt-1 text-xs text-muted-foreground">Highest match: <span className="text-cyan">PayPal / Microsoft 365</span></div>
+              <div className="mt-1 text-xs text-muted-foreground">Highest match: <span className="text-cyan">{analysis?.brand_similarity?.matchedBrand ?? "None"}</span></div>
               <div className="mt-4 h-2 rounded-full bg-white/5 overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${data.brandSimilarity}%` }} transition={{ duration: 1 }} className="h-full gradient-primary" />
               </div>
@@ -116,10 +223,36 @@ function URLIntelligence() {
             <GlassCard>
               <SectionHeading title="DNS & SSL" />
               <div className="space-y-1.5">
-                {data.dns.map((r, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs font-mono">
-                    <span className="px-1.5 py-0.5 rounded bg-white/5 text-cyan">{r.type}</span>
-                    <span className="text-muted-foreground truncate ml-2">{r.value}</span>
+                {data.dns.a_records.map((ip: string, i: number) => (
+                  <div key={`a-${i}`} className="flex items-center justify-between text-xs font-mono">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5 text-cyan">
+                      A
+                    </span>
+                    <span className="text-muted-foreground truncate ml-2">
+                      {ip}
+                    </span>
+                  </div>
+                ))}
+
+                {data.dns.ns_records.map((ns: string, i: number) => (
+                  <div key={`ns-${i}`} className="flex items-center justify-between text-xs font-mono">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5 text-cyan">
+                      NS
+                    </span>
+                    <span className="text-muted-foreground truncate ml-2">
+                      {ns}
+                    </span>
+                  </div>
+                ))}
+
+                {data.dns.mx_records.map((mx: string, i: number) => (
+                  <div key={`mx-${i}`} className="flex items-center justify-between text-xs font-mono">
+                    <span className="px-1.5 py-0.5 rounded bg-white/5 text-cyan">
+                      MX
+                    </span>
+                    <span className="text-muted-foreground truncate ml-2">
+                      {mx}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -133,12 +266,12 @@ function URLIntelligence() {
             <GlassCard>
               <SectionHeading title="Threat Reputation" />
               <ul className="space-y-2">
-                {data.reputationFeeds.map((f) => (
-                  <li key={f.name} className="flex items-center justify-between text-sm rounded-lg glass px-3 py-2">
-                    <span className="font-medium">{f.name}</span>
+                {analysis?.reputation?.providers?.map((f: any, i: number) => (
+                  <li key={i} className="flex items-center justify-between text-sm rounded-lg glass px-3 py-2">
+                    <span className="font-medium">{f.provider}</span>
                     <div className="text-right">
                       <div className="text-xs text-muted-foreground">{f.detections}</div>
-                      <RiskBadge level="critical" label={f.verdict} className="mt-0.5" />
+                      <RiskBadge level={f.malicious ? "critical" : "low"} label={f.status} className="mt-0.5" />
                     </div>
                   </li>
                 ))}
@@ -151,11 +284,18 @@ function URLIntelligence() {
             <GlassCard>
               <SectionHeading title="Suspicious Redirect Chain" />
               <ol className="space-y-2">
-                {data.redirects.map((r, i) => (
+                {data.redirects.map((r: any, i: number) => (
                   <li key={i} className="flex items-center gap-3 text-sm">
                     <span className="grid place-items-center h-6 w-6 rounded-full glass text-xs font-bold text-cyan">{i + 1}</span>
                     <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                    <span className="font-mono text-xs truncate">{r}</span>
+                    <a
+                      href={r}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs truncate text-cyan hover:underline"
+                    >
+                      {r}
+                    </a>
                   </li>
                 ))}
               </ol>
@@ -163,7 +303,7 @@ function URLIntelligence() {
             <GlassCard>
               <SectionHeading title="Behavior Timeline" description="Headless sandbox execution" />
               <ol className="relative border-l border-white/10 pl-4 space-y-3">
-                {data.timeline.map((t, i) => (
+                {data.timeline.map((t: any, i: number) => (
                   <li key={i} className="relative">
                     <span className="absolute -left-[21px] top-1 h-2.5 w-2.5 rounded-full bg-cyan glow-cyan" />
                     <div className="text-[11px] text-muted-foreground font-mono">{t.t}</div>
@@ -185,7 +325,7 @@ function URLIntelligence() {
               <div>
                 <h4 className="text-sm font-semibold mb-2">Top Reasons</h4>
                 <ul className="space-y-2">
-                  {data.aiExplanation.reasons.map((r, i) => (
+                  {data.aiExplanation.reasons.map((r: any, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <span className="mt-1 h-1.5 w-1.5 rounded-full bg-red-400 shrink-0" />
                       <span>{r}</span>
@@ -196,7 +336,7 @@ function URLIntelligence() {
               <div>
                 <h4 className="text-sm font-semibold mb-2">Recommended Actions</h4>
                 <ul className="space-y-2">
-                  {data.aiExplanation.recommendations.map((r, i) => (
+                  {data.aiExplanation.recommendations.map((r: any, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
                       <span className="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
                       <span>{r}</span>

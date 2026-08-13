@@ -1,10 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import {
-  Shield, LayoutDashboard, Link2, Mail, Eye, Paperclip,
-  Globe2, FileText, Settings as SettingsIcon, Home, Bell, Search, Menu, X,
+  Shield,
+  LayoutDashboard,
+  Link2,
+  Mail,
+  Eye,
+  Paperclip,
+  Globe2,
+  FileText,
+  Settings as SettingsIcon,
+  Home,
+  Bell,
+  Search,
+  Menu,
+  X,
+  LogOut,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +56,36 @@ export function BrandMark({ className }: { className?: string }) {
 export function TopNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const token =
+      localStorage.getItem("access_token") ||
+      sessionStorage.getItem("access_token");
+
+    const name =
+      localStorage.getItem("user_name") ||
+      sessionStorage.getItem("user_name") ||
+      "";
+
+    setIsLoggedIn(!!token);
+    setUserName(name);
+  }, [pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token_type");
+    localStorage.removeItem("user_email");
+    localStorage.removeItem("user_name");
+
+    sessionStorage.removeItem("access_token");
+    sessionStorage.removeItem("token_type");
+    sessionStorage.removeItem("user_email");
+    sessionStorage.removeItem("user_name");
+
+    window.location.href = "/login";
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full">
@@ -86,15 +129,38 @@ export function TopNav() {
               <Bell className="h-4 w-4" />
               <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-destructive" />
             </Button>
-            <Link to="/login" className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-white px-3 py-1.5">
-              Login
-            </Link>
-            <Link
-              to="/signup"
-              className="hidden sm:inline-flex text-sm text-white gradient-primary px-3.5 py-1.5 rounded-lg glow-primary hover:opacity-90 transition"
-            >
-              Sign Up
-            </Link>
+            {isLoggedIn ? (
+  <>
+    <span className="hidden sm:inline-flex text-sm text-muted-foreground px-3 py-1.5">
+      {userName || "Account"}
+    </span>
+
+    <button
+      type="button"
+      onClick={handleLogout}
+      className="hidden sm:inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white px-3 py-1.5 transition"
+    >
+      <LogOut className="h-4 w-4" />
+      Logout
+    </button>
+  </>
+) : (
+  <>
+    <Link
+      to="/login"
+      className="hidden sm:inline-flex text-sm text-muted-foreground hover:text-white px-3 py-1.5"
+    >
+      Login
+    </Link>
+
+    <Link
+      to="/signup"
+      className="hidden sm:inline-flex text-sm text-white gradient-primary px-3.5 py-1.5 rounded-lg glow-primary hover:opacity-90 transition"
+    >
+      Sign Up
+    </Link>
+  </>
+)}
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
@@ -122,9 +188,44 @@ export function TopNav() {
                 </Link>
               ))}
               <div className="mt-3 flex flex-col gap-2">
-                <Link to="/login" className="text-center py-2 rounded-lg border border-white/10">Login</Link>
-                <Link to="/signup" className="text-center py-2 rounded-lg gradient-primary text-white">Sign Up</Link>
-              </div>
+  {isLoggedIn ? (
+    <>
+      <div className="text-center py-2 text-sm text-muted-foreground">
+        {userName || "Account"}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(false);
+          handleLogout();
+        }}
+        className="flex items-center justify-center gap-2 py-2 rounded-lg border border-white/10"
+      >
+        <LogOut className="h-4 w-4" />
+        Logout
+      </button>
+    </>
+  ) : (
+    <>
+      <Link
+        to="/login"
+        onClick={() => setOpen(false)}
+        className="text-center py-2 rounded-lg border border-white/10"
+      >
+        Login
+      </Link>
+
+      <Link
+        to="/signup"
+        onClick={() => setOpen(false)}
+        className="text-center py-2 rounded-lg gradient-primary text-white"
+      >
+        Sign Up
+      </Link>
+    </>
+  )}
+</div>
             </div>
           </div>
         </div>

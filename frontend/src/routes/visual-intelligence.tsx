@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Camera, Eye } from "lucide-react";
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { GlassCard, RiskBadge, SectionHeading } from "@/components/cyber-ui";
 import { Button } from "@/components/ui/button";
-import { VISUAL_ANALYSIS_MOCK } from "@/lib/mock-data";
+import axios from "axios";
+import { getSessionId } from "@/lib/session-id";
+import { usePersistedState } from "@/lib/persisted-state";
+
 
 export const Route = createFileRoute("/visual-intelligence")({
   head: () => ({
@@ -39,9 +42,52 @@ const shot = (label: string, tone: "clone" | "brand") =>
   )}`;
 
 function VisualIntel() {
-  const [url, setUrl] = useState(VISUAL_ANALYSIS_MOCK.targetUrl);
-  const [captured, setCaptured] = useState(true);
-  const d = VISUAL_ANALYSIS_MOCK;
+  const [url, setUrl, clearVisualUrl] = usePersistedState("escudoflow_visual_url", "");
+  const [captured, setCaptured, clearCaptured] = usePersistedState("escudoflow_visual_captured", false);
+  const [loading, setLoading] = useState(false);
+  const [analysis, setAnalysis, clearVisualAnalysis] = usePersistedState<any>("escudoflow_visual_analysis", null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const d = analysis ?? {};
+
+  const analyzeVisual = async () => {
+    console.log(selectedFile);
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+
+    formData.append("file", selectedFile);
+
+    formData.append("url", url);
+
+    setLoading(true);
+
+    try {
+      const response = await axios.post(
+  "http://127.0.0.1:8000/visual/analyze",
+  formData,
+  {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      "X-Session-Id": getSessionId(),
+    },
+  }
+);
+
+      console.log(response.data);
+
+      setAnalysis(response.data);
+
+      setCaptured(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -55,10 +101,38 @@ function VisualIntel() {
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 flex items-center gap-2 rounded-xl glass px-4 h-14">
             <Eye className="h-4 w-4 text-cyan" />
-            <input className="bg-transparent flex-1 outline-none text-sm font-mono" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <input
+              className="bg-transparent flex-1 outline-none text-sm font-mono"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
           </div>
-          <Button onClick={() => setCaptured(true)} className="gradient-primary text-white glow-primary h-14 px-6">
-            <Camera className="h-4 w-4 mr-2" /> Capture Screenshot
+
+          {/* Hidden file input now lives as a real sibling in the JSX tree,
+              so fileInputRef actually attaches to a mounted DOM node. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                setSelectedFile(e.target.files[0]);
+              }
+            }}
+          />
+
+          <Button
+            onClick={() => {
+              if (selectedFile) {
+                analyzeVisual();
+              } else {
+                fileInputRef.current?.click();
+              }
+            }}
+            className="gradient-primary text-white glow-primary h-14 px-6"
+          >
+            <Camera className="h-4 w-4 mr-2" /> {loading ? "Analyzing..." : "Capture Screenshot"}
           </Button>
         </div>
       </GlassCard>
@@ -74,30 +148,49 @@ function VisualIntel() {
                   <div className="absolute left-0 right-0 h-8 bg-gradient-to-b from-red-500/30 to-transparent scan-line" />
                 </div>
               </div>
-              <div className="text-xs font-mono text-muted-foreground mt-2 truncate">{d.targetUrl}</div>
+              <div className="text-xs font-mono text-muted-foreground mt-2 truncate">{url}</div>
             </GlassCard>
             <GlassCard>
-              <SectionHeading title={`Reference: ${d.detectedBrand}`} action={<RiskBadge level="safe" label="Verified" />} />
+              <SectionHeading
+                title={`Reference: ${d.brand?.matchedBrand ?? "Unknown"}`}
+                action={<RiskBadge level="safe" label="Verified" />}
+              />
               <div className="rounded-xl overflow-hidden border border-emerald-500/30">
                 <img src={shot("Legitimate brand", "brand")} alt="Brand reference" className="w-full" />
               </div>
-              <div className="text-xs font-mono text-muted-foreground mt-2 truncate">https://login.microsoftonline.com</div>
+              <div className="text-xs font-mono text-muted-foreground mt-2 truncate">{d.clone?.referenceMatched}</div>
             </GlassCard>
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
-            <SimilarityCard label="Visual Similarity" value={d.visualSimilarity} />
-            <SimilarityCard label="Logo Similarity" value={d.logoSimilarity} />
-            <SimilarityCard label="Color Similarity" value={d.colorSimilarity} />
-            <SimilarityCard label="Layout Similarity" value={d.layoutSimilarity} />
+            <SimilarityCard
+              label="Visual Similarity"
+              value={Math.round((d.similarity?.visualSimilarity ?? 0) * 100)}
+            />
+            <SimilarityCard label="Logo Match" value={Math.round(d.logo?.confidence ?? 0)} />
+            <SimilarityCard
+              label="Color Similarity"
+              value={Math.round((d.similarity?.colorSimilarity ?? 0) * 100)}
+            />
+            <SimilarityCard
+              label="Layout Similarity"
+              value={Math.round((d.similarity?.layoutSimilarity ?? 0) * 100)}
+            />
           </div>
 
           <GlassCard>
             <SectionHeading title="Computer Vision Explanation" />
-            <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{d.explanation}</p>
+            <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{d.aiExplanation?.summary}</p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              {["CLIP embedding: 0.04", "SSIM: 0.92", "Perceptual hash Δ: 6", "Logo IoU: 0.98"].map((t) => (
-                <span key={t} className="px-2 py-1 rounded-md glass border border-white/10 font-mono">{t}</span>
+              {[
+                `CLIP: ${d.similarity?.clipSimilarity}`,
+                `SSIM: ${d.similarity?.ssim}`,
+                `Hash: ${d.similarity?.perceptualHash}`,
+                `Logo: ${d.logo?.confidence}%`,
+              ].map((t) => (
+                <span key={t} className="px-2 py-1 rounded-md glass border border-white/10 font-mono">
+                  {t}
+                </span>
               ))}
             </div>
           </GlassCard>
@@ -113,7 +206,12 @@ function SimilarityCard({ label, value }: { label: string; value: number }) {
       <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-bold gradient-text">{value}%</div>
       <div className="mt-3 h-2 rounded-full bg-white/5 overflow-hidden">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 1 }} className="h-full gradient-primary" />
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${value}%` }}
+          transition={{ duration: 1 }}
+          className="h-full gradient-primary"
+        />
       </div>
     </GlassCard>
   );

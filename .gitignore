@@ -1,0 +1,94 @@
+# =========================================
+# Environment / Secrets
+# =========================================
+
+.env
+.env.*
+!.env.example
+
+# =========================================
+# Python
+# =========================================
+
+venv/
+.venv/
+**/venv/
+**/.venv/
+
+__pycache__/
+**/__pycache__/
+
+*.py[cod]
+*.pyo
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =========================================
+# FastAPI / Runtime uploads
+# =========================================
+
+backend/uploads/
+**/uploads/
+
+# =========================================
+# Visual Intelligence generated cache
+# =========================================
+
+backend/vision/cache/
+backend/vision/embeddings/
+
+# =========================================
+# Frontend
+# =========================================
+
+frontend/node_modules/
+**/node_modules/
+
+frontend/dist/
+frontend/build/
+
+# =========================================
+# IDE
+# =========================================
+
+.vscode/
+.idea/
+
+# =========================================
+# OS files
+# =========================================
+
+.DS_Store
+Thumbs.db
+
+# =========================================
+# Logs
+# =========================================
+
+*.log
+
+# =========================================
+# Temporary files
+# =========================================
+
+*.tmp
+*.temp
+*.bak
+
+# ML virtual environment
+ml/venv/
+
+# Python cache
+ml/__pycache__/
+ml/**/*.pyc
+
+# ML generated files / models
+ml/models/
+ml/checkpoints/
+ml/runs/
+ml/logs/
+
+# ML datasets
+ml/datasets/*.csv

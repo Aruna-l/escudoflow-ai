@@ -115,7 +115,7 @@ export const AI_FINDINGS = [
 ];
 
 export const URL_ANALYSIS_MOCK = {
-  url: "https://paypa1-secure.co/login/verify?session=xyz",
+  url: "",
   overallRisk: 92,
   confidence: 96,
   verdict: "Dangerous" as "Safe" | "Suspicious" | "Dangerous",
@@ -167,8 +167,8 @@ export const URL_ANALYSIS_MOCK = {
 
 export const EMAIL_ANALYSIS_MOCK = {
   subject: "URGENT: Wire transfer authorization needed today",
-  from: "ceo@acmee-corp.com",
-  replyTo: "ceo.finance@protonmail.com",
+  from_email: "ceo@acmee-corp.com",
+  reply_to: "ceo.finance@protonmail.com",
   to: "cfo@acme.com",
   riskScore: 97,
   spamScore: 4.2,
@@ -176,13 +176,22 @@ export const EMAIL_ANALYSIS_MOCK = {
   bec: true,
   urgency: 0.91,
   impersonation: 0.94,
-  auth: { spf: "fail", dkim: "none", dmarc: "fail" },
-  entities: [
-    { type: "Person", value: "John Miller (CEO)" },
-    { type: "Amount", value: "$248,500" },
-    { type: "Bank", value: "First National Bank of Panama" },
-    { type: "Deadline", value: "End of business today" },
-  ],
+  authentication: {
+    spf: "FAIL",
+    dkim: "NONE",
+    dmarc: "FAIL",
+    score: 20,
+  },
+  reply_analysis: {
+  match: false,
+  reason: "Reply-To domain mismatch",
+  },
+  entities: {
+    person: ["John Miller (CEO)"],
+    amount: ["$248,500"],
+    bank: ["First National Bank of Panama"],
+    deadline: ["End of business today"],
+  },
   senderReputation: "Newly observed — 0 prior sends",
   headerSummary: "Message originated from IP 185.243.115.42 (Panama). SPF hard-fail. Reply-To domain differs from From.",
   suspiciousLinks: [
@@ -196,8 +205,18 @@ export const EMAIL_ANALYSIS_MOCK = {
     { text: "Wire $248,500 today to secure the acquisition", tag: "Financial Urgency" },
     { text: "I'm in back-to-back board meetings, only reply to this address", tag: "Reply-To Pivot" },
   ],
-  explanation:
-    "This message exhibits a textbook Business Email Compromise pattern. The sender spoofs the CEO via a lookalike domain (acmee vs acme), pivots replies to a ProtonMail address, and pressures a wire transfer before end-of-day. SPF and DMARC both fail, and the Reply-To domain does not match the From.",
+  aiExplanation: {
+  summary: "This email exhibits a Business Email Compromise pattern.",
+  reasons: [
+    "Contains 'urgent'",
+    "Contains 'wire'",
+    "Reply-To differs from sender"
+  ],
+  recommendations: [
+    "Do not click suspicious links.",
+    "Verify the sender through another channel."
+  ]
+},
 };
 
 export const VISUAL_ANALYSIS_MOCK = {
